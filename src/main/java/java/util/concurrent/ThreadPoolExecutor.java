@@ -1363,12 +1363,12 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
          * and so reject the task.
          */
         int c = ctl.get();
-        if (workerCountOf(c) < corePoolSize) {
-            if (addWorker(command, true))
-                return;
+        if (workerCountOf(c) < corePoolSize) { //当前运行线程是否小于核心线程
+            if (addWorker(command, true)) //这个时候才会创建线程
+                return;  //线程创建完成，返回
             c = ctl.get();
         }
-        if (isRunning(c) && workQueue.offer(command)) {
+        if (isRunning(c) && workQueue.offer(command)) { //core<task<queue+core时放到阻塞队列
             int recheck = ctl.get();
             if (! isRunning(recheck) && remove(command))
                 reject(command);
