@@ -716,7 +716,7 @@ class Thread implements Runnable {
 
         boolean started = false;
         try {
-            start0();
+            start0();  // 本地方法,启动的操作系统线程通过jvm来调用的java中Thread的run方法
             started = true;
         } finally {
             try {

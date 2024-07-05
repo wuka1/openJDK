@@ -23,18 +23,18 @@ public class ThreadPoolExecutorTest {
         // 线程怎么保活？--
         ThreadPoolExecutor pool = new ThreadPoolExecutor(5, 10, 10L, TimeUnit.MILLISECONDS, new LinkedBlockingDeque<>(5), Executors.defaultThreadFactory(), new ThreadPoolExecutor.AbortPolicy());
 //        pool.allowCoreThreadTimeOut(true); //允许核心线程关闭
-        for (int i = 0; i < 15; i++) {  //6个任务创建的线程数、10个任务和15个任务的执行时长对比
-            int index = i;
-            // execute和submit的区别
-            pool.execute(() -> System.out.println("执行:" + index + "--" + Thread.currentThread().getName()));
+//        for (int i = 0; i < 15; i++) {  //6个任务创建的线程数、10个任务和15个任务的执行时长对比
+//            int index = i;
+//            // execute和submit的区别
+//            pool.execute(() -> System.out.println("执行:" + index + "--" + Thread.currentThread().getName()));
 ////            pool.submit(() -> System.out.println(index)); //封装成RunnableFuture，可以获取异常
-        }
-////        //关闭线程池
-////        pool.shutdown();
-//        pool.shutdownNow();
-//        for (int i = 0; i < 16; i++) {
-//            pool.execute(new ThreadTask());
 //        }
 
+        for (int i = 0; i < 16; i++) {
+            pool.execute(new ThreadTask());
+        }
+//        //关闭线程池
+//        pool.shutdown();
+//        pool.shutdownNow();
     }
 }

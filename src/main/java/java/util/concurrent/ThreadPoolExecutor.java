@@ -382,7 +382,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
     private static final int COUNT_BITS = Integer.SIZE - 3;
     private static final int CAPACITY   = (1 << COUNT_BITS) - 1;
 
-    // runState is stored in the high-order bits
+    // runState is stored in the high-order bits--线程池5种状态
     private static final int RUNNING    = -1 << COUNT_BITS;
     private static final int SHUTDOWN   =  0 << COUNT_BITS;
     private static final int STOP       =  1 << COUNT_BITS;
@@ -614,13 +614,13 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
          * @param firstTask the first task (null if none)
          */
         Worker(Runnable firstTask) {
-            setState(-1); // inhibit interrupts until runWorker
+            setState(-1); // inhibit interrupts until runWorker 设置AQS的同步状态为-1，禁止中断，直到调用runWorker
             this.firstTask = firstTask;
             this.thread = getThreadFactory().newThread(this);
         }
 
         /** Delegates main run loop to outer runWorker  */
-        public void run() {
+        public void run() { //
             runWorker(this);
         }
 
@@ -915,12 +915,12 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                 int wc = workerCountOf(c);
                 if (wc >= CAPACITY ||
                     wc >= (core ? corePoolSize : maximumPoolSize))
-                    return false;
-                if (compareAndIncrementWorkerCount(c))
-                    break retry;
+                    return false;  //线程数大于max-capacity时
+                if (compareAndIncrementWorkerCount(c))  //cas 增加worker数值
+                    break retry;  //小于核心线程，所以跳出当前的for
                 c = ctl.get();  // Re-read ctl
                 if (runStateOf(c) != rs)
-                    continue retry;
+                    continue retry;  //?
                 // else CAS failed due to workerCount change; retry inner loop
             }
         }
@@ -930,7 +930,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         Worker w = null;
         try {
             w = new Worker(firstTask);
-            final Thread t = w.thread;
+            final Thread t = w.thread;  //真正的创建线程的地方
             if (t != null) {
                 final ReentrantLock mainLock = this.mainLock;
                 mainLock.lock();
@@ -954,12 +954,12 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                     mainLock.unlock();
                 }
                 if (workerAdded) {
-                    t.start();
+                    t.start();   //触发Worker的run方法--start方法怎么到线程的run方法？看Worker的构造方法
                     workerStarted = true;
                 }
             }
         } finally {
-            if (! workerStarted)
+            if (! workerStarted)  //task 增加失败
                 addWorkerFailed(w);
         }
         return workerStarted;
@@ -1005,24 +1005,27 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         final ReentrantLock mainLock = this.mainLock;
         mainLock.lock();
         try {
-            completedTaskCount += w.completedTasks;
+            completedTaskCount += w.completedTasks; //
             workers.remove(w);
         } finally {
             mainLock.unlock();
         }
 
+        //尝试关闭线程池,但如果是正常运行状态,就不会关闭
         tryTerminate();
 
         int c = ctl.get();
-        if (runStateLessThan(c, STOP)) {
-            if (!completedAbruptly) {
-                int min = allowCoreThreadTimeOut ? 0 : corePoolSize;
-                if (min == 0 && ! workQueue.isEmpty())
+        if (runStateLessThan(c, STOP)) { //running的可以理解，shutdown？
+            if (!completedAbruptly) {  //线程正常结束
+                int min = allowCoreThreadTimeOut ? 0 : corePoolSize;  //allowCoreThreadTimeOut是否运行core线程关闭，默认false
+                if (min == 0 && ! workQueue.isEmpty())  //如果允许核心线程超时并且当前队列里面还有任务没跑，必须留1个线程,不能全死掉
                     min = 1;
-                if (workerCountOf(c) >= min)
-                    return; // replacement not needed
+                if (workerCountOf(c) >= min)  //如果线程池数量>=最少预留线程数
+                    return; // replacement not needed  // 线程自然结束了，不用补充worker
             }
-            addWorker(null, false);
+            // 1、执行任务异常结束的，补充worker
+            // 2、如果线程池数量<最少预留线程数，补充worker
+            addWorker(null, false);  //
         }
     }
 
@@ -1131,7 +1134,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         w.unlock(); // allow interrupts
         boolean completedAbruptly = true;
         try {
-            while (task != null || (task = getTask()) != null) {
+            while (task != null || (task = getTask()) != null) {  //有task任务时
                 w.lock();
                 // If pool is stopping, ensure thread is interrupted;
                 // if not, ensure thread is not interrupted.  This
@@ -1158,12 +1161,12 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                     }
                 } finally {
                     task = null;
-                    w.completedTasks++;
+                    w.completedTasks++;  //已执行完成的tasks
                     w.unlock();
                 }
             }
-            completedAbruptly = false;
-        } finally {
+            completedAbruptly = false;  //所有任务执行完了
+        } finally {  //没有task任务时
             processWorkerExit(w, completedAbruptly);
         }
     }
@@ -1369,13 +1372,13 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             c = ctl.get();
         }
         if (isRunning(c) && workQueue.offer(command)) { //core<task<queue+core时放到阻塞队列
-            int recheck = ctl.get();
+            int recheck = ctl.get(); //为啥要重复检查？--多线程执行execute
             if (! isRunning(recheck) && remove(command))
                 reject(command);
-            else if (workerCountOf(recheck) == 0)
-                addWorker(null, false);
+            else if (workerCountOf(recheck) == 0) //什么场景？
+                addWorker(null, false); //false表示超过核心线程数
         }
-        else if (!addWorker(command, false))
+        else if (!addWorker(command, false)) //task>queue+core，会返回false
             reject(command);
     }
 
