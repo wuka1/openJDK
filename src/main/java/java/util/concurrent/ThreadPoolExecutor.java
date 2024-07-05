@@ -1025,7 +1025,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             }
             // 1、执行任务异常结束的，补充worker
             // 2、如果线程池数量<最少预留线程数，补充worker
-            addWorker(null, false);  //
+            addWorker(null, false);
         }
     }
 
@@ -1067,11 +1067,12 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             if ((wc > maximumPoolSize || (timed && timedOut))
                 && (wc > 1 || workQueue.isEmpty())) {
                 if (compareAndDecrementWorkerCount(c))
-                    return null;
-                continue;
+                    return null;  //扣减线程池线程数，在processWorkerExit()处理线程退出
+                continue;  //扣减失败， 跳出本次循环重新检查
             }
 
             try {
+                //符合【线程超时处理前置条件】时用poll设置超时时间，不符合就使用take（阻塞直至有返回）
                 Runnable r = timed ?
                     workQueue.poll(keepAliveTime, TimeUnit.NANOSECONDS) :
                     workQueue.take();
@@ -1134,7 +1135,8 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         w.unlock(); // allow interrupts
         boolean completedAbruptly = true;
         try {
-            while (task != null || (task = getTask()) != null) {  //有task任务时
+            //循环：先执行firstTask（不为空），后续通过getTask()获取任务。
+            while (task != null || (task = getTask()) != null) {
                 w.lock();
                 // If pool is stopping, ensure thread is interrupted;
                 // if not, ensure thread is not interrupted.  This
@@ -1160,7 +1162,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                         afterExecute(task, thrown);
                     }
                 } finally {
-                    task = null;
+                    task = null;  //最后将task置为null，触发while循环的条件getTask()
                     w.completedTasks++;  //已执行完成的tasks
                     w.unlock();
                 }
